@@ -6,7 +6,10 @@ public class Main {
     public static void main(String[] args) {
 
         WbmBrowser wbmBrowser = new WbmBrowser("D:\\__JAVA\\WbmTranslate\\src\\com\\nosal\\WBM_EN_SRC\\wbm");
-        wbmBrowser.searchWbmForKeys();
+        wbmBrowser.readDictionaryFromFile("D:\\__JAVA\\WbmTranslate\\src\\com\\nosal\\slownik.txt");
+        System.out.println("wait");
+        //wbmBrowser.searchWbmForKeys();
+        //wbmBrowser.saveDictionaryToFile("D:\\__JAVA\\WbmTranslate\\src\\com\\nosal\\dictionary.csv");
         wbmBrowser.translateWbm();
 //        Object[]paths=null;
 //        try{

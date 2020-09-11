@@ -1,6 +1,7 @@
 package com.nosal;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,7 +20,26 @@ public class WbmBrowser {
         this.dictionary = new LinkedHashMap<>();
         this.wbmPath = Paths.get(path);
         this.regexTab = new LinkedList<>();
-        regexTab.add("(?<=\\[\")[a-z]*?(?=\"\\])");
+        regexTab.add("(?<=\"title\":\\{\"default\":\")[^\"{}]+?(?=\",)");
+        //regexTab.add("(?<=\\{\"title\":\\{\"default\":\").+?(?=[$])");
+        regexTab.add("(?<=\\{title:\\{default:\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=\\{fallback:\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=fallback:\")[^\",{}]+?(?=\"[}])");
+        regexTab.add("(?<=\\{\"fallback\":\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=\\{.\"fallback\":.\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=\\{id:\"networking\",title:\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=\\{id:\"device-status\",title:\")[^\",{}]+?(?=\",)");
+        regexTab.add("(?<=[>])[a-zA-Z]+?(?=[<][/]button[>])");
+        regexTab.add("(?<=note:\\{default:\")[^\"{}]+?(?=\",)");
+        regexTab.add("(?<=note:\\{default:['])[^{}]+?(?=['],)");
+        regexTab.add("(?<=\"note\":\\{\"default\":\")[^\"{}]+?(?=\",)");
+        regexTab.add("(?<=\"note\":\\{\"default\":['])[^{}]+?(?=['],)");
+        regexTab.add("(?<=textContent[=]\")[a-zA-Z]+?(?=\")");
+        //regexTab.add("(?<=timezone-and-format-form-title\"[,]default:\")[^\"{}]+?(?=\",)");
+        // regexTab.add("(?<=\\[\\{\"title\":\\{\"default\":\").+?(?=\",)");
+        //{"title":{"default":"/// //Submit</button>   {id:"networking",title:" [^",{}]
+        // {id:"device-status",title:"Device Status",  e.textContent="Submit",
+        //timezone-and-format-form-title",default:"
     }
 
     public String findTranslation(String key) {
@@ -52,8 +72,10 @@ public class WbmBrowser {
                     Matcher matcher = pattern.matcher(content);
                     while (matcher.find()) {
                         if (!dictionary.containsKey(matcher.group())) {
-                            dictionary.put(matcher.group(), "PL_" + matcher.group());
-                            System.out.println("new key: " + matcher.group());
+                            if (!matcher.group().equals("Reboot")) {
+                                dictionary.put(matcher.group(), matcher.group());
+                                System.out.println("new key: " + matcher.group());
+                            }
                         }
                     }
 
@@ -99,10 +121,12 @@ public class WbmBrowser {
                                 stringBuilder.append(content.substring(0, matcher.start()));
                                 stringBuilder.append(findTranslation(matcher.group()));
                                 stringBuilder.append(content.substring(matcher.end()));
-                                content = stringBuilder.toString();
+                                if (!matcher.group().equals(findTranslation(matcher.group()))) {
+                                    content = stringBuilder.toString();
 
-                                System.out.println("translated: " + matcher.group() + " into: " + dictionary.get(matcher.group()));
-                                matcher = pattern.matcher(content);
+                                    System.out.println("translated: " + matcher.group());
+                                    matcher = pattern.matcher(content);
+                                }
                                 //System.out.println("result: "+content.substring(matcher.start()-10, matcher.end())+10);
                             }
                         }
@@ -121,5 +145,48 @@ public class WbmBrowser {
             }
 
         }
+    }
+
+    public void saveDictionaryToFile(String path) {
+        StringBuilder stringBuilder = new StringBuilder();
+        Object[] keys = dictionary.keySet().toArray();
+        for (int i = 0; i < this.dictionary.size(); i++) {
+            stringBuilder.append(keys[i].toString());
+            stringBuilder.append("\t");
+            stringBuilder.append(dictionary.get(keys[i].toString()));
+            stringBuilder.append("\n\r");
+        }
+        try {
+            Files.writeString(Paths.get(path), stringBuilder.toString(), StandardOpenOption.CREATE_NEW);
+        } catch (Exception e) {
+            System.out.println("save error");
+        }
+    }
+
+    public void readDictionaryFromFile(String path) {
+        String content = null;
+        System.out.println("trying to open: " + path);
+        try {
+            content = Files.readString(Paths.get(path), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            System.out.println("error");
+            System.out.println(e);
+        }
+        Pattern pattern = Pattern.compile("[&][^$&]+?[$][^$&]+?\r\n");
+        Matcher matcher = pattern.matcher(content);
+
+        while (matcher.find()) {
+            System.out.println("matcher: " + matcher.group());
+            Pattern pattern1 = Pattern.compile("(?<=[&]).*?(?=[$])");
+            Matcher matcher1 = pattern1.matcher(matcher.group());
+            matcher1.find();
+            System.out.println(matcher1.group());
+            Pattern pattern2 = Pattern.compile("(?<=[$]).*?(?=\r\n)");
+            Matcher matcher2 = pattern2.matcher(matcher.group());
+            matcher2.find();
+            System.out.println(matcher2.group());
+            dictionary.put(matcher1.group().stripLeading().stripTrailing(), matcher2.group().stripLeading().stripTrailing());
+        }
+
     }
 }
