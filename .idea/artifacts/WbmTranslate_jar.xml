@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="WbmTranslate:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/WbmTranslate_jar</output-path>
+    <root id="archive" name="WbmTranslate.jar">
+      <element id="module-output" name="WbmTranslate" />
+    </root>
+  </artifact>
+</component>

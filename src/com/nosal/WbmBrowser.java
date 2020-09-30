@@ -1,7 +1,6 @@
 package com.nosal;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,13 +14,17 @@ public class WbmBrowser {
     LinkedHashMap<String, String> dictionary;
     Path wbmPath;
     private LinkedList<String> regexTab;
+    private String pathOfWbm;
+    private String pathOfDictionary;
+
 
     public WbmBrowser(String path) {
         this.dictionary = new LinkedHashMap<>();
-        this.wbmPath = Paths.get(path);
         this.regexTab = new LinkedList<>();
+        this.pathOfWbm = findPathOfWbm(path);
+        this.wbmPath = Paths.get(this.pathOfWbm);
+        this.pathOfDictionary = findPathOfDictionary(path);
         regexTab.add("(?<=\"title\":\\{\"default\":\")[^\"{}]+?(?=\",)");
-        //regexTab.add("(?<=\\{\"title\":\\{\"default\":\").+?(?=[$])");
         regexTab.add("(?<=\\{title:\\{default:\")[^\",{}]+?(?=\",)");
         regexTab.add("(?<=\\{fallback:\")[^\",{}]+?(?=\",)");
         regexTab.add("(?<=fallback:\")[^\",{}]+?(?=\"[}])");
@@ -35,11 +38,6 @@ public class WbmBrowser {
         regexTab.add("(?<=\"note\":\\{\"default\":\")[^\"{}]+?(?=\",)");
         regexTab.add("(?<=\"note\":\\{\"default\":['])[^{}]+?(?=['],)");
         regexTab.add("(?<=textContent[=]\")[a-zA-Z]+?(?=\")");
-        //regexTab.add("(?<=timezone-and-format-form-title\"[,]default:\")[^\"{}]+?(?=\",)");
-        // regexTab.add("(?<=\\[\\{\"title\":\\{\"default\":\").+?(?=\",)");
-        //{"title":{"default":"/// //Submit</button>   {id:"networking",title:" [^",{}]
-        // {id:"device-status",title:"Device Status",  e.textContent="Submit",
-        //timezone-and-format-form-title",default:"
     }
 
     public String findTranslation(String key) {
@@ -64,7 +62,7 @@ public class WbmBrowser {
             if (!fileChosen.isDirectory()) {
                 if (fileChosen.getName().endsWith(".json") || fileChosen.getName().endsWith(".js") || fileChosen.getName().endsWith(".php")) {
                     try {
-                        content = Files.readString(Paths.get(object.toString()));
+                        content = new String(Files.readAllBytes(Paths.get(object.toString())));
                     } catch (Exception e) {
                         System.out.println("error");
                     }
@@ -106,7 +104,7 @@ public class WbmBrowser {
             if (!fileChosen.isDirectory()) {
                 if (fileChosen.getName().endsWith(".json") || fileChosen.getName().endsWith(".js") || fileChosen.getName().endsWith(".php")) {
                     try {
-                        content = Files.readString(Paths.get(object.toString()));
+                        content = new String(Files.readAllBytes(Paths.get(object.toString())));
                     } catch (Exception e) {
                         System.out.println("open error");
                     }
@@ -116,7 +114,7 @@ public class WbmBrowser {
                         while (matcher.find()) {
 
                             if (dictionary.containsKey(matcher.group())) {
-                                //System.out.println("original: "+content.substring(matcher.start()-10, matcher.end())+10);
+
                                 StringBuilder stringBuilder = new StringBuilder();
                                 stringBuilder.append(content.substring(0, matcher.start()));
                                 stringBuilder.append(findTranslation(matcher.group()));
@@ -127,7 +125,7 @@ public class WbmBrowser {
                                     System.out.println("translated: " + matcher.group());
                                     matcher = pattern.matcher(content);
                                 }
-                                //System.out.println("result: "+content.substring(matcher.start()-10, matcher.end())+10);
+
                             }
                         }
                     }
@@ -137,7 +135,7 @@ public class WbmBrowser {
                         System.out.println("delete error");
                     }
                     try {
-                        Files.writeString(Paths.get(object.toString()), content, StandardOpenOption.CREATE_NEW);
+                        Files.write(Paths.get(object.toString()), content.getBytes(), StandardOpenOption.CREATE_NEW);
                     } catch (Exception e) {
                         System.out.println("save error");
                     }
@@ -147,27 +145,30 @@ public class WbmBrowser {
         }
     }
 
-    public void saveDictionaryToFile(String path) {
+    public void saveDictionaryToFile() {
+        String path = this.pathOfDictionary;
         StringBuilder stringBuilder = new StringBuilder();
         Object[] keys = dictionary.keySet().toArray();
         for (int i = 0; i < this.dictionary.size(); i++) {
+            stringBuilder.append("&\t");
             stringBuilder.append(keys[i].toString());
-            stringBuilder.append("\t");
+            stringBuilder.append("\t$\t");
             stringBuilder.append(dictionary.get(keys[i].toString()));
-            stringBuilder.append("\n\r");
+            stringBuilder.append("\r\n");
         }
         try {
-            Files.writeString(Paths.get(path), stringBuilder.toString(), StandardOpenOption.CREATE_NEW);
+            Files.write(Paths.get(path), stringBuilder.toString().getBytes(), StandardOpenOption.CREATE_NEW);
         } catch (Exception e) {
             System.out.println("save error");
         }
     }
 
-    public void readDictionaryFromFile(String path) {
+    public void readDictionaryFromFile() {
+        String path = this.pathOfDictionary;
         String content = null;
         System.out.println("trying to open: " + path);
         try {
-            content = Files.readString(Paths.get(path), StandardCharsets.UTF_8);
+            content = new String(Files.readAllBytes(Paths.get(path)));
         } catch (Exception e) {
             System.out.println("error");
             System.out.println(e);
@@ -185,8 +186,37 @@ public class WbmBrowser {
             Matcher matcher2 = pattern2.matcher(matcher.group());
             matcher2.find();
             System.out.println(matcher2.group());
-            dictionary.put(matcher1.group().stripLeading().stripTrailing(), matcher2.group().stripLeading().stripTrailing());
+            dictionary.put(matcher1.group().replaceAll("^\\s", "").replaceAll("//s$", ""), matcher2.group().replaceAll("^\\s", "").replaceAll("//s$", ""));
         }
 
+    }
+
+    private String findPathOfWbm(String path) {
+        String currentPath = path;
+        System.out.println(currentPath);
+        String content = null;
+        try {
+            content = new String(Files.readAllBytes(Paths.get(path)));
+        } catch (Exception e) {
+            System.out.println("error test 1");
+        }
+        Pattern pattern = Pattern.compile("(?<=wbmPath=\").*?(?=\")");
+        Matcher matcher = pattern.matcher(content);
+        matcher.find();
+        return matcher.group();
+    }
+
+    private String findPathOfDictionary(String path) {
+        String currentPath = path;
+        String content = null;
+        try {
+            content = new String(Files.readAllBytes(Paths.get(path)));
+        } catch (Exception e) {
+            System.out.println("error");
+        }
+        Pattern pattern = Pattern.compile("(?<=dictionaryPath=\").*?(?=\")");
+        Matcher matcher = pattern.matcher(content);
+        matcher.find();
+        return matcher.group();
     }
 }

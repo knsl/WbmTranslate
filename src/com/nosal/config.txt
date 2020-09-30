@@ -1,0 +1,2 @@
+wbmPath="D:\\__JAVA\\WbmTranslate\\src\\com\\nosal\\WBM_EN_SRC\\wbm"
+dictionaryPath="D:\\__JAVA\\WbmTranslate\\src\\com\\nosal\\slownik.txt"
